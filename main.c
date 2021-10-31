@@ -7,23 +7,16 @@
 #define SENSOR_AMOUNT 2
 
 /* BEGIN TYPE DEFINITIONS */
-typedef enum
-{
-    false,
-    true
-} bool;
-typedef struct ad_values_struct
-{
+typedef enum {false,true} bool;
+typedef struct ad_values_struct {
     int values[ARRAY_MAX_SIZE];
     int size;
 } ad_values_t;
-typedef struct sensor_thread_data
-{
+typedef struct sensor_thread_data {
     int thread_id;
     ad_values_t *ad_values;
 } sensor_thread_data_t;
-typedef struct aux_thread_data
-{
+typedef struct aux_thread_data {
     sensor_thread_data_t thread_data;
     int target_thread;
 } aux_thread_data_t;

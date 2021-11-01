@@ -3,7 +3,7 @@
 #include <pthread.h>
 #include <unistd.h>
 
-#define ARRAY_MAX_SIZE 10
+#define ARRAY_MAX_SIZE 100
 #define SENSOR_AMOUNT 2
 
 /* BEGIN TYPE DEFINITIONS */
@@ -43,10 +43,10 @@ int sizes_considered_for_means[SENSOR_AMOUNT];
 pthread_mutex_t values_mutex[SENSOR_AMOUNT];
 
 /* BEGIN ASYNCHRONOUS FUNCTIONS */
-// calc_mean calculates the mean value for a given structure's values
-void *calc_mean(void *thread_arg);
 // value_loop corresponds to an asynchronous loop for retrieving AD values for each channel
 void *value_loop(void *thread_arg);
+// calc_mean calculates the mean value for a given structure's values
+void *calc_mean(void *thread_arg);
 // clear_values resets the size of a given structure's array
 void *clear_values(void *thread_arg);
 /* END ASYNCHRONOUS FUNCTIONS */
@@ -61,13 +61,15 @@ void insert_value(ad_values_t *ad_values, int value);
 
 int main()
 {
+    // local variables for thread control
     pthread_attr_t attr;
-    pthread_attr_t attr2;
     int t;
     int return_c;
 
+    // variable to store the addresses of ad_data in the main thread
     ad_values_t ad_data[SENSOR_AMOUNT];
 
+    // initialize thread attribute
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
 
@@ -89,6 +91,7 @@ int main()
         }
     }
 
+    // keep running until user quits
     while(running)
     {
         int input;
@@ -100,6 +103,7 @@ int main()
                 running = false;
                 break;
 
+            // create a thread for each mean to be calculated
             case 1:
                 for(int i = 0; i < SENSOR_AMOUNT; i++)
                 {
@@ -113,8 +117,8 @@ int main()
                         printf("thread creation error %d\n", i);
                         exit(-1);
                     }
-
                 }
+                // wait until all means are calculated
                 for (int i = 0; i < SENSOR_AMOUNT; i++)
                 {
                     pthread_join(calc_threads[i], NULL);
@@ -123,9 +127,9 @@ int main()
                 {
                     printf("Mean for sensor channel %d is %f (%d samples considered)\n", i+1, value_means[i], sizes_considered_for_means[i]);
                 }
-
                 break;
 
+            // create a thread for each buffer to be cleared
             case 2:
                 for(int i = 0; i < SENSOR_AMOUNT; i++)
                 {
@@ -140,12 +144,11 @@ int main()
                         exit(-1);
                     }
                 }
-
+                // wait until all buffers are cleared
                 for (int i = 0; i < SENSOR_AMOUNT; i++)
                 {
                     pthread_join(clear_threads[i], NULL);
                 }
-
                 break;
 
             default:
@@ -167,6 +170,7 @@ void *value_loop(void *thread_arg)
     int task_id = ad_thread_data->thread_id;
     ad_values_t *task_ad_data = ad_thread_data->ad_values;
 
+    // each thread shall have its own random seed
     srand((int) task_ad_data);
 
     while(running)
@@ -176,26 +180,6 @@ void *value_loop(void *thread_arg)
         pthread_mutex_unlock(&values_mutex[task_id]);
         sleep(1);
     }
-    pthread_exit(NULL);
-    return NULL;
-}
-
-int get_ad_value()
-{
-    return rand() % 20;
-}
-
-void *clear_values(void *thread_arg)
-{
-    aux_thread_data_t *ad_thread_data;
-    ad_thread_data = (aux_thread_data_t *) thread_arg;
-
-    int target_thread = ad_thread_data->target_thread;
-    ad_values_t *task_ad_data = ad_thread_data->thread_data.ad_values;
-
-    pthread_mutex_lock(&values_mutex[target_thread]);
-    task_ad_data->size = 0;
-    pthread_mutex_unlock(&values_mutex[target_thread]);
     pthread_exit(NULL);
     return NULL;
 }
@@ -220,6 +204,25 @@ void *calc_mean(void *thread_arg)
     return NULL;
 }
 
+void *clear_values(void *thread_arg)
+{
+    aux_thread_data_t *ad_thread_data;
+    ad_thread_data = (aux_thread_data_t *) thread_arg;
+
+    int target_thread = ad_thread_data->target_thread;
+    ad_values_t *task_ad_data = ad_thread_data->thread_data.ad_values;
+
+    pthread_mutex_lock(&values_mutex[target_thread]);
+    task_ad_data->size = 0;
+    pthread_mutex_unlock(&values_mutex[target_thread]);
+    pthread_exit(NULL);
+    return NULL;
+}
+
+int get_ad_value()
+{
+    return rand() % 20;
+}
 
 void insert_value(ad_values_t *ad_values, int value)
 {

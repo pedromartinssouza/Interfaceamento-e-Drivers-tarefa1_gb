@@ -1,3 +1,7 @@
+/*
+* Authors: Lucas Davi Hirdes, Pedro Martins de Souza and Rafael Schmidt
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
